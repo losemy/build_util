@@ -11,6 +11,10 @@ go get -u github.com/losemy/build_util
 go install github.com/losemy/build_util
 ```
 
+### scf_bootstrap文件
+1. 需要注意windows平台下编写的scf文件会有问题 主要替换成仓库中的 或者尽量在linux环境下编辑
+
+
 ### 打包方式示例
 ```shell
 rm main.zip # 删除打包文件
