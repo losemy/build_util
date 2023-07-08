@@ -1,4 +1,4 @@
-module build_util
+module github.com/losemy/build_util
 
 go 1.20
 
