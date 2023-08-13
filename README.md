@@ -7,8 +7,7 @@
 
 #### 安装
 ```shell
-go get -u github.com/losemy/build_util
-go install github.com/losemy/build_util
+go install github.com/losemy/build_util@latest
 ```
 
 ### scf_bootstrap文件
