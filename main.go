@@ -172,10 +172,10 @@ func zipDirectory(zipWriter *zip.Writer, folderToZip string) error {
 	for _, fileInfo := range fileInfoArray {
 		if fileInfo.IsDir() {
 			// Create a new zip file for the directory
-			_, err := zipWriter.Create(fileInfo.Name() + "/")
-			if err != nil {
-				return err
-			}
+			//_, err := zipWriter.Create(fileInfo.Name() + "/")
+			//if err != nil {
+			//	return err
+			//}
 			// Recursively call the function for the subdirectory
 			err = zipDirectory(zipWriter, filepath.Join(folderToZip, fileInfo.Name()))
 			if err != nil {
@@ -188,7 +188,7 @@ func zipDirectory(zipWriter *zip.Writer, folderToZip string) error {
 				return err
 			}
 			// Create a new zip file for the file
-			newZipFile, err := zipWriter.Create(fileInfo.Name())
+			newZipFile, err := zipWriter.Create(filepath.Join(folderToZip, fileInfo.Name()))
 			if err != nil {
 				fileToZip.Close()
 				return err
