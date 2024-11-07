@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -28,6 +29,7 @@ func main() {
 			if !c.Args().Present() {
 				return errors.New("no input provided")
 			}
+			c.Args().Slice()
 
 			inputExe := c.Args().First()
 			outputZip := c.String("output")
@@ -35,9 +37,16 @@ func main() {
 				outputZip = fmt.Sprintf("%s.zip", filepath.Base(inputExe))
 			}
 
-			if err := compressExeAndArgs(outputZip, inputExe, c.Args().Tail()); err != nil {
-				return fmt.Errorf("failed to compress file: %v", err)
+			if IsDir(inputExe) {
+				if err := compressExeAndArgs(outputZip, "", c.Args().Slice()); err != nil {
+					return fmt.Errorf("failed to compress file: %v", err)
+				}
+			} else {
+				if err := compressExeAndArgs(outputZip, inputExe, c.Args().Tail()); err != nil {
+					return fmt.Errorf("failed to compress file: %v", err)
+				}
 			}
+
 			log.Print("wrote " + outputZip)
 			return nil
 		},
@@ -90,12 +99,15 @@ func compressExeAndArgs(outZipPath string, exePath string, args []string) error 
 
 	zipWriter := zip.NewWriter(zipFile)
 	defer zipWriter.Close()
-	data, err := ioutil.ReadFile(exePath)
-	if err != nil {
-		return err
+
+	if len(exePath) != 0 {
+		data, err := ioutil.ReadFile(exePath)
+		if err != nil {
+			return err
+		}
+		err = writeExe(zipWriter, filepath.Base(exePath), data)
 	}
 
-	err = writeExe(zipWriter, filepath.Base(exePath), data)
 	if err != nil {
 		return err
 	}
@@ -118,6 +130,13 @@ func compressExeAndArgs(outZipPath string, exePath string, args []string) error 
 			}
 			continue
 		}
+		if IsDir(arg) {
+			//_, err := zipWriter.Create(fileInfo.Name() + "/")
+			if err := zipDirectory(zipWriter, arg); err != nil {
+				return err
+			}
+			continue
+		}
 		writer, err := zipWriter.Create(arg)
 		if err != nil {
 			return err
@@ -132,4 +151,55 @@ func compressExeAndArgs(outZipPath string, exePath string, args []string) error 
 		}
 	}
 	return err
+}
+
+func IsDir(path string) bool {
+	info, err := os.Stat(path)
+	if err != nil {
+		return false // 返回错误，例如路径不存在或无法访问
+	}
+	return info.IsDir()
+}
+
+// Walk through the directory and write the files to the zip file
+func zipDirectory(zipWriter *zip.Writer, folderToZip string) error {
+	// Get the list of files and directories to zip
+	fileInfoArray, err := os.ReadDir(folderToZip)
+	if err != nil {
+		return err
+	}
+
+	for _, fileInfo := range fileInfoArray {
+		if fileInfo.IsDir() {
+			// Create a new zip file for the directory
+			_, err := zipWriter.Create(fileInfo.Name() + "/")
+			if err != nil {
+				return err
+			}
+			// Recursively call the function for the subdirectory
+			err = zipDirectory(zipWriter, filepath.Join(folderToZip, fileInfo.Name()))
+			if err != nil {
+				return err
+			}
+		} else {
+			// Open the file to add to the zip
+			fileToZip, err := os.Open(filepath.Join(folderToZip, fileInfo.Name()))
+			if err != nil {
+				return err
+			}
+			// Create a new zip file for the file
+			newZipFile, err := zipWriter.Create(fileInfo.Name())
+			if err != nil {
+				fileToZip.Close()
+				return err
+			}
+			// Copy the file to the zip
+			_, err = io.Copy(newZipFile, fileToZip)
+			fileToZip.Close()
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
